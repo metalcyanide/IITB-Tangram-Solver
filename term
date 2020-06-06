@@ -1,0 +1,27 @@
+import polygonrep
+from shapely.geometry import Polygon, Point, LineString
+from shapely import affinity
+from math import sqrt, atan, degrees, acos
+import numpy as np
+import random
+import copy
+
+import polyplacement
+tans = polygonrep.create_tanpieces()
+square = tans[4]
+import simannealing
+target_polygon = polygonrep.regular_parallelogram(sqrt(8),sqrt(8), 90)
+import backtracking
+sol = backtracking.backtracking_solve(tans, target_polygon)
+poly_placed, sequence, check = polyplacement.place_polygon_by_edge(target_polygon, tans[6], flip=True)
+loss = polygonrep.loss_function(sol, tans, target_polygon)
+
+
+poly_placed_6, sol_6, overlap_check = polyplacement.place_polygon_by_edge(target_polygon, tans[6], flip = True)
+sol_6
+diff_polygon, diff_check = backtracking.get_diff_polygon(poly_placed_6, target_polygon)
+list(diff_polygon.exterior.coords)
+poly_placed_5,sol_5, overlap_check = polyplacement.place_polygon_by_edge(diff_polygon, tans[5], flip=True)
+diff_polygon_1, diff_check = backtracking.get_diff_polygon(poly_placed_5, diff_polygon)
+import simannealing
+simannealing.solve_target(tans, target_polygon)

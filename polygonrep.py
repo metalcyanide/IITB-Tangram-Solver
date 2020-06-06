@@ -1,9 +1,9 @@
-from matplotlib import pyplot
+import matplotlib.pyplot as plt
 from shapely.geometry import Polygon, Point, LineString
 from shapely import affinity
 from math import sqrt
 import numpy as np
-
+import copy
 from scipy.optimize import minimize
  
 '''
@@ -86,7 +86,7 @@ def rotate_polygon(polygon, angle, rotation_about = 'centroid'):
 
 def union_polygons(polygons):
     
-    polygons_overlayed = polygons[0]
+    polygons_overlayed = copy.deepcopy(polygons[0])
 
     for polygon in polygons[1:]:
         polygons_overlayed = polygons_overlayed.union(polygon)
@@ -113,7 +113,7 @@ def perform_sequence(polygons, sequence):
     if len(polygons)*3 != len(sequence):
         print("Sequence length mismatch with number of polygons")
     
-    transformed_polygons = polygons
+    transformed_polygons = copy.deepcopy(polygons)
     for index in range(0, len(polygons)):
         transform_sequence = sequence[3*index: 3*index+3]
         transformed_polygons[index] = transform_polygon(transformed_polygons[index], transform_sequence)
@@ -172,13 +172,43 @@ def objective_function(sequence):
 
     return loss_function(sequence,polygons,target_polygon)
 
+def plot_polygon(polygon):
+    x,y = polygon.exterior.xy
+    plt.plot(x,y)
+
+def vizualizer(sequence, polygons, target_polygon):
+    fig,ax =  plt.subplots(3)
+    union_tan_pieces = union_polygons(perform_sequence(polygons, sequence))
+    x,y = union_tan_pieces.exterior.xy
+    ax[0].plot(x,y)
+    ax[0].set_title('union of tan pieces')
+
+    x_target, y_target = target_polygon.exterior.xy
+    ax[1].plot(x_target, y_target)
+    ax[1].set_title('target_polygon')
+
+    overlayed_poly = target_polygon.union(union_tan_pieces)
+    x_overlay, y_overlay = overlayed_poly.exterior.xy
+
+    ax[2].plot(x_overlay, y_overlay)
+    ax[2].set_title('overlay')
+    plt.show()
+
+
 
 if __name__ == "__main__":
+
+    polygons = create_tanpieces()
+    target_polygon = regular_parallelogram(sqrt(8),sqrt(8), 90)
+
     sequence0 = np.random.rand(21)
     res_SLSQP = minimize(objective_function, x0 = sequence0, method = "SLSQP")
     res_Nelder_Mead = minimize(objective_function, x0 = sequence0, method = "Nelder-Mead")
     res_Powell = minimize(objective_function, x0 = sequence0, method = "Powell")
     res_COBYLA = minimize(objective_function, x0 = sequence0, method = "COBYLA")
+
+    vizualizer(res_SLSQP.x, polygons, target_polygon)
+    
     print(res_SLSQP.fun)
     print(res_Nelder_Mead.fun)
     print(res_Powell.fun)
