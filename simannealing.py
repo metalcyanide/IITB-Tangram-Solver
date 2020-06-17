@@ -6,7 +6,7 @@ from math import sqrt, exp
 import numpy as np
 import random
 
-import polyplacement
+import placement
 
 # • Compute the difference polygon D between the target and the current solution.
 # • Consider the tentative solution S
@@ -26,7 +26,7 @@ Need to think about deep copy probs in simannealing solution
 ###################################### NEED TO WORK ON THIS ####################
 '''
 def get_initial_solution(polygons, target_polygon):
-    polygons_placed, initial_sol = polyplacement.place_polygons_on_target(polygons, target_polygon)
+    polygons_placed, initial_sol,flip_check = placement.place_polygons_on_target(polygons, target_polygon)
     return initial_sol
 
 def temperature_function(iteration):
@@ -38,7 +38,7 @@ def get_next_solution(polygons, target_polygon, solution):
     index = random.randrange(len(polygons))
     solution[3*index:3*index+3] = [0]*3
     diff_polygon = difference_polygon(polygons, target_polygon, solution)
-    poly_placed, sequence, overlap_check = polyplacement.place_polygon_by_edge(diff_polygon, polygons[index])
+    sequence, flip_check = placement.place_polygon_by_edge(diff_polygon, polygons[index])
     solution[3*index: 3*index+3] = sequence
     return solution
 
@@ -68,39 +68,47 @@ def difference_polygon(polygons, target_polygon, solution):
 
     return diff_polygon
 
-def simannealing_solve(polygons, target_polygon, initial_solution):
+def simannealing_solve(polygons, target_polygon, initial_solution, file_loc="./loss.txt"):
     iteration = 1
     solution = initial_solution
     eps = float_info.epsilon
     itr = 0
     loss = polygonrep.loss_function(solution, polygons, target_polygon)
     min_loss = loss
+    f = open(file_loc, "a+")
+    f.write(str(loss))
     while loss > eps:
+        res = "Iteration {itr}, loss {loss}\n".format(itr = iteration, loss = loss)
+        f.write(res)
         if loss < min_loss:
             print("min loss: " + str(min_loss))
             print("solution: " + str(solution))
             min_loss = loss
-        # print(min_loss)
         itr += 1
-        # print(itr)
         next_solution = get_next_solution(polygons, target_polygon, solution)
         prob = prob_function(polygons, target_polygon, solution, next_solution, iteration)
         random_num = random.random()
-        # print(next_solution)
         if random_num < prob :
             solution = next_solution
         iteration +=1
         loss = polygonrep.loss_function(solution, polygons, target_polygon)
+    f.close()
 
     return solution
 
 
 
-def solve_target(polygons, target_polygon):
+def solve_target(polygons, target_polygon, file_loc="./loss.txt"):
     initial_sol = get_initial_solution(polygons, target_polygon)
-    solution_simanneal = simannealing_solve(polygons, target_polygon, initial_sol)
+    solution_simanneal = simannealing_solve(polygons, target_polygon, initial_sol, file_loc)
     print(solution_simanneal)
 
-    # polygonrep.vizualizer(solution_simanneal, polygons, target_polygon)
+    polygonrep.vizualizer(solution_simanneal, polygons, target_polygon)
 
     return True
+
+if __name__ == "__main__":
+
+    polygons = polygonrep.create_tanpieces()
+    target_polygon = polygonrep.regular_parallelogram(sqrt(8),sqrt(8), 90)
+    solve_target(polygons, target_polygon)

@@ -5,14 +5,21 @@ from math import sqrt, atan, degrees, acos
 import numpy as np
 import random
 import copy
-
 import polyplacement
+import simannealing
+import backtracking
+import placement
+
+
 tans = polygonrep.create_tanpieces()
 square = tans[4]
-import simannealing
 target_polygon = polygonrep.regular_parallelogram(sqrt(8),sqrt(8), 90)
-import backtracking
-sol = backtracking.backtracking_solve(tans, target_polygon)
+poly_placed, sol, flip_check = placement.place_polygons_on_target(tans, target_polygon)
+sol = backtracking.backtrack_solve(tans, target_polygon)
+
+sol = simannealing.solve_target(tans, target_polygon)
+
+
 poly_placed, sequence, check = polyplacement.place_polygon_by_edge(target_polygon, tans[6], flip=True)
 loss = polygonrep.loss_function(sol, tans, target_polygon)
 
@@ -23,5 +30,22 @@ diff_polygon, diff_check = backtracking.get_diff_polygon(poly_placed_6, target_p
 list(diff_polygon.exterior.coords)
 poly_placed_5,sol_5, overlap_check = polyplacement.place_polygon_by_edge(diff_polygon, tans[5], flip=True)
 diff_polygon_1, diff_check = backtracking.get_diff_polygon(poly_placed_5, diff_polygon)
-import simannealing
 simannealing.solve_target(tans, target_polygon)
+
+ext = [(0,0),(0,2),(2,2), (2,0), (0,0)]
+int = [(1,0),(0,1),(1,2), (2,1), (1,0)]
+int1 = [(1.5,2),(1.5,1.5),(2,1.5)]
+
+target_poly = Polygon(ext, [int,int1])
+
+poly_sq = Polygon([(-1,-1),(1,-1),(1,1),(-1,1)])
+poly_tri = Polygon([(0,0),(0,2),(2,0)])
+rot_angle_tri = placement.calc_rot_angle((2,0),(0,2),(0,0),(2*sqrt(2),0))
+poly_tri_rotate = affinity.rotate(poly_tri,rot_angle_tri,origin=(0,0))
+list(poly_tri.exterior.coords)
+list(poly_tri_rotate.exterior.coords)
+
+
+from  more_itertools import unique_everseen
+items = [1, 2, 0, 1, 3, 2]
+list(unique_everseen(items))

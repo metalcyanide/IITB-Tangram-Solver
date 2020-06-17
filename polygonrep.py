@@ -5,7 +5,8 @@ from math import sqrt
 import numpy as np
 import copy
 from scipy.optimize import minimize
- 
+from descartes import PolygonPatch
+
 '''
 Basic line parallel to x-axis or along the initial point and origin
 '''
@@ -78,7 +79,7 @@ def translate_polygon(polygon, translate_coordinates):
 '''
 Rotate about the centroid
 '''
-def rotate_polygon(polygon, angle, rotation_about = 'centroid'):
+def rotate_polygon(polygon, angle, rotation_about = (0,0)):
     
     polygon_rotated = affinity.rotate(polygon, angle, origin=rotation_about)
 
@@ -104,10 +105,10 @@ def transform_polygon(polygon, transform_sequence):
     y_disp = transform_sequence[1]
     rot_angle = transform_sequence[2]
 
-    translated_polygon = translate_polygon(polygon, [x_disp, y_disp])
-    rotated_polygon = rotate_polygon(translated_polygon, rot_angle)
-    
-    return rotated_polygon
+    rotated_polygon = rotate_polygon(polygon, rot_angle)
+    translated_polygon = translate_polygon(rotated_polygon, [x_disp, y_disp])
+
+    return translated_polygon
 
 def perform_sequence(polygons, sequence):
     if len(polygons)*3 != len(sequence):
@@ -160,16 +161,17 @@ def create_tanpieces():
     parallelogram = regular_parallelogram(1, sqrt(2), 135)
     square = regular_parallelogram(1,1,90)
 
-    polygons = [small_triangle, small_triangle, intermediate_triangle, parallelogram, square, big_triangle, big_triangle]
+    polygons = [big_triangle, big_triangle,intermediate_triangle, parallelogram, square, small_triangle, small_triangle]
 
     return polygons
 
+# def objective_function(sequence):
+#     polygons = create_tanpieces()
+#     target_polygon = regular_parallelogram(sqrt(8),sqrt(8), 90)
 
+#     return loss_function(sequence,polygons,target_polygon)
 
-def objective_function(sequence):
-    polygons = create_tanpieces()
-    target_polygon = regular_parallelogram(sqrt(8),sqrt(8), 90)
-
+def objective_function(sequence, polygons, target_polygon):
     return loss_function(sequence,polygons,target_polygon)
 
 def plot_polygon(polygon):
@@ -184,7 +186,8 @@ def vizualizer(sequence, polygons, target_polygon):
     ax[0].set_title('union of tan pieces')
 
     x_target, y_target = target_polygon.exterior.xy
-    ax[1].plot(x_target, y_target)
+    ax[1].plot(x_target, y_target,color='#6699cc', alpha=0.7,
+    linewidth=3, solid_capstyle='round', zorder=2)
     ax[1].set_title('target_polygon')
 
     overlayed_poly = target_polygon.union(union_tan_pieces)
@@ -194,6 +197,58 @@ def vizualizer(sequence, polygons, target_polygon):
     ax[2].set_title('overlay')
     plt.show()
 
+def vizualize(polygon):
+    fig,ax =  plt.subplots()
+    x,y = polygon.exterior.xy
+    ax.plot(x,y)
+    for interior in polygon.interiors:
+        x,y = interior.xy
+        ax.plot(x,y)
+    ax.set_title('vizualize')
+    plt.show()
+
+def filled_poly_vizualize(polygon):
+    fig = plt.figure(1, dpi=90)
+    bounds = list(polygon.bounds)
+    ax = fig.add_subplot(111)
+    
+    x_range = [bounds[0]-1, bounds[2]+1]
+    y_range = [bounds[1]-1, bounds[3]+1]
+    ax.set_xlim(*x_range)
+    ax.set_ylim(*y_range)
+    exterior_polygon = Polygon(list(polygon.exterior.coords))
+    patch = PolygonPatch(exterior_polygon)
+    ax.add_patch(patch)
+    if len(list(polygon.interiors)) != 0:
+        for interior in list(polygon.interiors):
+            interior_hole = Polygon(list(interior.coords))
+            interior_patch = PolygonPatch(interior_hole, fc='#FF4500')
+            ax.add_patch(interior_patch)
+    plt.show()
+
+def vizualize_overlap(polygon, overlay_polygons):
+    fig = plt.figure(1, dpi=90)
+    bounds = list(polygon.bounds)
+    ax = fig.add_subplot(111)
+    
+    x_range = [bounds[0]-1, bounds[2]+1]
+    y_range = [bounds[1]-1, bounds[3]+1]
+    ax.set_xlim(*x_range)
+    ax.set_ylim(*y_range)
+    exterior_polygon = Polygon(list(polygon.exterior.coords))
+    patch = PolygonPatch(exterior_polygon)
+    ax.add_patch(patch)
+    if len(list(polygon.interiors)) != 0:
+        for interior in list(polygon.interiors):
+            interior_hole = Polygon(list(interior.coords))
+            interior_patch = PolygonPatch(interior_hole, fc='#FFD700')
+            ax.add_patch(interior_patch)
+    
+    for poly in overlay_polygons:
+        overlay_poly = Polygon(list(poly.exterior.coords))
+        overlay_patch = PolygonPatch(overlay_poly, fc='#FF4500')
+        ax.add_patch(overlay_patch)
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -202,12 +257,15 @@ if __name__ == "__main__":
     target_polygon = regular_parallelogram(sqrt(8),sqrt(8), 90)
 
     sequence0 = np.random.rand(21)
-    res_SLSQP = minimize(objective_function, x0 = sequence0, method = "SLSQP")
-    res_Nelder_Mead = minimize(objective_function, x0 = sequence0, method = "Nelder-Mead")
-    res_Powell = minimize(objective_function, x0 = sequence0, method = "Powell")
-    res_COBYLA = minimize(objective_function, x0 = sequence0, method = "COBYLA")
+    res_SLSQP = minimize(objective_function, x0 = sequence0, args=(polygons, target_polygon), method = "SLSQP")
+    res_Nelder_Mead = minimize(objective_function, x0 = sequence0, args=(polygons, target_polygon), method = "Nelder-Mead")
+    res_Powell = minimize(objective_function, x0 = sequence0, args=(polygons, target_polygon), method = "Powell")
+    res_COBYLA = minimize(objective_function, x0 = sequence0, args=(polygons, target_polygon), method = "COBYLA")
 
     vizualizer(res_SLSQP.x, polygons, target_polygon)
+    vizualizer(res_Nelder_Mead.x, polygons, target_polygon)
+    vizualizer(res_Powell.x, polygons, target_polygon)
+    vizualizer(res_COBYLA.x, polygons, target_polygon)
     
     print(res_SLSQP.fun)
     print(res_Nelder_Mead.fun)
