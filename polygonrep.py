@@ -6,6 +6,8 @@ import numpy as np
 import copy
 from scipy.optimize import minimize
 from descartes import PolygonPatch
+import placement
+from statistics import mean
 
 '''
 Basic line parallel to x-axis or along the initial point and origin
@@ -222,11 +224,12 @@ def filled_poly_vizualize(polygon):
     if len(list(polygon.interiors)) != 0:
         for interior in list(polygon.interiors):
             interior_hole = Polygon(list(interior.coords))
-            interior_patch = PolygonPatch(interior_hole, fc='#FF4500')
+            interior_patch = PolygonPatch(interior_hole, fc='#FFFFFF')
             ax.add_patch(interior_patch)
     plt.show()
 
-def vizualize_overlap(polygon, overlay_polygons):
+def vizualize_overlap(sequence, polygons, polygon):
+    overlay_polygons = perform_sequence(polygons, sequence)
     fig = plt.figure(1, dpi=90)
     bounds = list(polygon.bounds)
     ax = fig.add_subplot(111)
@@ -236,17 +239,22 @@ def vizualize_overlap(polygon, overlay_polygons):
     ax.set_xlim(*x_range)
     ax.set_ylim(*y_range)
     exterior_polygon = Polygon(list(polygon.exterior.coords))
-    patch = PolygonPatch(exterior_polygon)
+    patch = PolygonPatch(exterior_polygon,fc='#000000')
     ax.add_patch(patch)
     if len(list(polygon.interiors)) != 0:
         for interior in list(polygon.interiors):
             interior_hole = Polygon(list(interior.coords))
-            interior_patch = PolygonPatch(interior_hole, fc='#FFD700')
+            interior_patch = PolygonPatch(interior_hole, fc='#FFFFFF')
             ax.add_patch(interior_patch)
-    
-    for poly in overlay_polygons:
+
+    nfloors = np.random.rand(len(overlay_polygons)) 
+    cmap = plt.get_cmap('Spectral')
+    colors = cmap(nfloors)
+
+    for index in range(0,len(overlay_polygons)):
+        poly = overlay_polygons[index]
         overlay_poly = Polygon(list(poly.exterior.coords))
-        overlay_patch = PolygonPatch(overlay_poly, fc='#FF4500')
+        overlay_patch = PolygonPatch(overlay_poly, fc=colors[index])
         ax.add_patch(overlay_patch)
     plt.show()
 
@@ -254,20 +262,43 @@ def vizualize_overlap(polygon, overlay_polygons):
 if __name__ == "__main__":
 
     polygons = create_tanpieces()
-    target_polygon = regular_parallelogram(sqrt(8),sqrt(8), 90)
+    target_polygon_2 = regular_parallelogram(sqrt(8),sqrt(8), 90)
+    coords = [(2-sqrt(2),0),(2+sqrt(2),0),(2+sqrt(1/2), sqrt(1/2)),(2+sqrt(2), sqrt(2)),(2+sqrt(1/2), sqrt(9/2)),(4,2+sqrt(2)),
+            (0,2+sqrt(2)),(2-sqrt(1/2), sqrt(9/2)),(2-sqrt(2), sqrt(2)),(2-sqrt(1/2), sqrt(1/2))]
+    target_polygon = Polygon(coords)
 
-    sequence0 = np.random.rand(21)
-    res_SLSQP = minimize(objective_function, x0 = sequence0, args=(polygons, target_polygon), method = "SLSQP")
-    res_Nelder_Mead = minimize(objective_function, x0 = sequence0, args=(polygons, target_polygon), method = "Nelder-Mead")
-    res_Powell = minimize(objective_function, x0 = sequence0, args=(polygons, target_polygon), method = "Powell")
-    res_COBYLA = minimize(objective_function, x0 = sequence0, args=(polygons, target_polygon), method = "COBYLA")
+    # sequence0 = np.random.rand(21)
+    _, sequence0, _ = placement.place_polygons_on_target(polygons, target_polygon)
 
-    vizualizer(res_SLSQP.x, polygons, target_polygon)
-    vizualizer(res_Nelder_Mead.x, polygons, target_polygon)
-    vizualizer(res_Powell.x, polygons, target_polygon)
-    vizualizer(res_COBYLA.x, polygons, target_polygon)
+    slsqp = []
+    neldermead = []
+    powell = []
+    cobyla = []
+    for i in range(0,1):
+        res_SLSQP = minimize(objective_function, x0 = sequence0, args=(polygons, target_polygon), method = "SLSQP")
+        res_Nelder_Mead = minimize(objective_function, x0 = sequence0, args=(polygons, target_polygon), method = "Nelder-Mead")
+        res_Powell = minimize(objective_function, x0 = sequence0, args=(polygons, target_polygon), method = "Powell")
+        res_COBYLA = minimize(objective_function, x0 = sequence0, args=(polygons, target_polygon), method = "COBYLA")
+
+        slsqp.append(objective_function(res_SLSQP.x, polygons, target_polygon))
+        neldermead.append(objective_function(res_Nelder_Mead.x, polygons, target_polygon))
+        powell.append(objective_function(res_Powell.x, polygons, target_polygon))
+        cobyla.append(objective_function(res_COBYLA.x, polygons, target_polygon))
+        
+        print(res_SLSQP.fun)
+        print(res_Nelder_Mead.fun)
+        print(res_Powell.fun)
+        print(res_COBYLA.fun)
     
-    print(res_SLSQP.fun)
-    print(res_Nelder_Mead.fun)
-    print(res_Powell.fun)
-    print(res_COBYLA.fun)
+    print(slsqp)
+    print(neldermead)
+    print(powell)
+    print(cobyla)
+    print(mean(slsqp))
+    print(mean(neldermead))
+    print(mean(powell))
+    print(mean(cobyla))
+    vizualize_overlap(res_SLSQP.x, polygons, target_polygon)
+    vizualize_overlap(res_Nelder_Mead.x, polygons, target_polygon)
+    vizualize_overlap(res_Powell.x, polygons, target_polygon)
+    vizualize_overlap(res_COBYLA.x, polygons, target_polygon)

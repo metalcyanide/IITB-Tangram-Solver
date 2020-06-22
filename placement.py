@@ -7,6 +7,7 @@ import random
 import copy
 from more_itertools import unique_everseen
 from shapely.ops import transform
+from shapely.validation import make_valid
 
 def cross_sign(x1, y1, x2, y2):
     return x1 * y2 > x2 * y1
@@ -59,7 +60,17 @@ def corner_match(polygon_to_shift, reference_corner, shift_corner):
     
     return polygon_shifted, x_shift,y_shift
 
+def makevaild(polygon):
+    if not(polygon.is_valid):
+        polygon.buffer(0)
+    return polygon
+    
+
 def get_corner_list(polygon):
+    # print(polygon.geom_type)
+    # print(polygon.wkt)
+    if(polygon.geom_type == 'GeometryCollection'):
+        return list([])
     polygon = transform(lambda x,y: (round(x,3),round(y,3)), polygon)
     corners = list(polygon.exterior.coords)
     if len(polygon.interiors):
@@ -174,6 +185,8 @@ def select_corner_at_index(polygon_to_shift, order_of_edges, index = 0):
 def merge_corners(polygon, precision = 0.00001):
     corners = list(polygon.exterior.coords)
     new_coordinates = []
+    if not(len(corners)):
+        return polygon
     merged_corner = list(corners[0])
     for index in range(0, len(corners)-1):
         line = LineString([corners[index], corners[index+1]])
@@ -202,13 +215,28 @@ def merge_corners(polygon, precision = 0.00001):
     coordinates = list(np.around(np.array(coordinates),3))
     return Polygon(coordinates)
 
+def remove_lines(polygon):
+    corners = list(polygon.exterior.coords)
+    corners = list(np.around(np.array(corners),3))
+    if (len(corners) < 3):
+        return polygon
+    coordinates = []
+    for index in range(0,len(corners)-2):
+        coordinates.append(corners[index])
+        if(corners[index][0] == corners[index+2][0] and corners[index][1] == corners[index+2][1]):
+            index = index+2
+    coordinates.append(corners[-2])
+    coordinates.append(corners[-1])
+    return Polygon(coordinates)
+
 def get_diff_polygon(polygon_to_place, target_polygon, sequence):
 
     polygon_transformed = polygonrep.transform_polygon(polygon_to_place, sequence)
     diff_polygon = target_polygon.difference(polygon_transformed)
     diff_check = False
-    diff_polygon = transform(lambda x,y: (round(x,3),round(y,3)), diff_polygon)
-    if diff_polygon.geom_type == 'MultiPolygon':
+    # diff_polygon = transform(lambda x,y: (round(x,3),round(y,3)), diff_polygon)
+    diff_polygon = make_valid(diff_polygon)
+    if diff_polygon.geom_type == 'MultiPolygon' or diff_polygon.geom_type == 'GeometryCollection':
         max_area = 0
         for polygon in diff_polygon:
             diff_poly_area = polygon.area
@@ -216,7 +244,11 @@ def get_diff_polygon(polygon_to_place, target_polygon, sequence):
                 max_area = diff_poly_area
                 diff_polygon = polygon
         diff_check = True
-    diff_polygon = merge_corners(diff_polygon)
+    # diff_polygon = merge_corners(diff_polygon)
+    # diff_polygon = remove_lines(diff_polygon)
+    if not(diff_polygon.is_valid):
+        diff_polygon.buffer(0)
+
     return diff_polygon
 
 def pre_process(target_polygon, polygon_to_place, not_edge_match= False):
@@ -342,8 +374,10 @@ def place_polygons_on_target(polygons, target_polygon):
         # polygonrep.filled_poly_vizualize(polygon_transformed)
 
         target_polygon_diff = get_diff_polygon(polygons[index], target_polygon,sequence)
-        target_polygon = merge_corners(target_polygon_diff)
+        target_polygon = target_polygon_diff
+        # target_polygon = merge_corners(target_polygon_diff)
+        # target_polygon = remove_lines(target_polygon)
         # polygonrep.filled_poly_vizualize(target_polygon_diff)
-        polygonrep.filled_poly_vizualize(target_polygon)
+        # polygonrep.filled_poly_vizualize(target_polygon)
     
     return polygons_placed, solution, flip_check

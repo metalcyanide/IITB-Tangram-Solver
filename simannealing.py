@@ -29,8 +29,8 @@ def get_initial_solution(polygons, target_polygon):
     polygons_placed, initial_sol,flip_check = placement.place_polygons_on_target(polygons, target_polygon)
     return initial_sol
 
-def temperature_function(iteration):
-    return 0.01/(iteration)
+def temperature_function(iteration, alpha=0.9):
+    return pow(alpha, iteration)
 
 
 def get_next_solution(polygons, target_polygon, solution):
@@ -45,10 +45,13 @@ def get_next_solution(polygons, target_polygon, solution):
 '''
 ############ code from here done #######################
 '''
-def prob_function(polygons, target_polygon, initial_solution, next_solution, iteration):
+def prob_function(polygons, target_polygon, initial_solution, next_solution, iteration, alpha=0.9):
     loss_initial_solution = polygonrep.loss_function(initial_solution, polygons, target_polygon)
     loss_next_solution = polygonrep.loss_function(next_solution, polygons, target_polygon)
-    prob = exp((loss_initial_solution - loss_next_solution) / (temperature_function(iteration)))
+    temp_val = (temperature_function(iteration, alpha))
+    if temp_val == 0:
+        temp_val = 0.01/iteration
+    prob = exp((loss_initial_solution - loss_next_solution) / temp_val)
 
     if prob > 1:
         return 1

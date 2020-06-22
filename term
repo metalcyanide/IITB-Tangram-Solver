@@ -13,13 +13,17 @@ import placement
 
 tans = polygonrep.create_tanpieces()
 square = tans[4]
-target_polygon = polygonrep.regular_parallelogram(sqrt(8),sqrt(8), 90)
+
+coords = [(2-sqrt(2),0),(2+sqrt(2),0),(2+sqrt(1/2), sqrt(1/2)),(2+sqrt(2), sqrt(2)),(2+sqrt(1/2), sqrt(9/2)),(4,2+sqrt(2)),
+            (0,2+sqrt(2)),(2-sqrt(1/2), sqrt(9/2)),(2-sqrt(2), sqrt(2)),(2-sqrt(1/2), sqrt(1/2))]
+
+target_polygon = Polygon(coords)
 poly_placed, sol, flip_check = placement.place_polygons_on_target(tans, target_polygon)
 sol = backtracking.backtrack_solve(tans, target_polygon)
 
 sol = simannealing.solve_target(tans, target_polygon)
 
-
+target_polygon = polygonrep.regular_parallelogram(sqrt(8),sqrt(8), 90)
 poly_placed, sequence, check = polyplacement.place_polygon_by_edge(target_polygon, tans[6], flip=True)
 loss = polygonrep.loss_function(sol, tans, target_polygon)
 
