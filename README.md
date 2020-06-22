@@ -1,2 +1,2 @@
 # tangrams
-Solving tangrams using RL
+Solving tangrams using python
